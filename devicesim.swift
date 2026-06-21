@@ -78,5 +78,41 @@ if CommandLine.arguments.contains("button") {
     }
 }
 
+// тест всех привязок (кнопки + энкодеры) по аргументу "suite"
+func note(_ n: UInt8) { toHost([0x90, n, 0x7F]); toHost([0x90, n, 0x00]) }
+func cc(_ c: UInt8, _ v: UInt8) { toHost([0xB0, c, v]) }
+if CommandLine.arguments.contains("suite") {
+    var t = 3.0
+    for (n, name) in [(UInt8(94),"Play"),(91,"prev"),(92,"next"),(95,"mute"),(74,"app:Safari")] {
+        let nn = n; let label = name
+        Timer.scheduledTimer(withTimeInterval: t, repeats: false) { _ in log("кнопка \(label) (нота \(nn))"); note(nn) }
+        t += 0.4
+    }
+    // энкодер яркости CC16: +3 тика, потом -2 тика
+    Timer.scheduledTimer(withTimeInterval: t, repeats: false) { _ in log("энкодер1 яркость +3"); cc(16, 0x03) }; t += 0.4
+    Timer.scheduledTimer(withTimeInterval: t, repeats: false) { _ in log("энкодер1 яркость -2"); cc(16, 0x42) }; t += 0.4
+    // энкодер громкости CC23: +4 тика
+    Timer.scheduledTimer(withTimeInterval: t, repeats: false) { _ in log("энкодер8 громкость +4"); cc(23, 0x04) }; t += 0.4
+}
+
+// СТРЕСС: шквал быстрых движений фейдера + долбёж кнопок/энкодеров (проверка многопоточности)
+if CommandLine.arguments.contains("stress") {
+    var n = 0
+    Timer.scheduledTimer(withTimeInterval: 0.15, repeats: true) { _ in
+        guard online else { return }
+        n += 1
+        // быстрый свип фейдера во всю длину
+        toHost([0x90,0x68,0x7F])
+        var pos = (n % 2 == 0) ? 200 : 16200
+        let target = (n % 2 == 0) ? 16200 : 200
+        let step = pos < target ? 600 : -600
+        while abs(pos - target) > 600 { pos += step; toHost([0xE0, UInt8(pos & 0x7F), UInt8((pos>>7) & 0x7F)]) }
+        toHost([0x90,0x68,0x00])
+        // долбёж кнопок и энкодеров вперемешку
+        for note: UInt8 in [94,91,92,95,74,77] { toHost([0x90,note,0x7F]); toHost([0x90,note,0x00]) }
+        toHost([0xB0,16, n%2==0 ? 0x05:0x45]); toHost([0xB0,23,0x03])
+    }
+}
+
 log("симулятор P1-Nano запущен (порт P1Sim). Пингую 14 01, жду MCU-поток хоста.")
 RunLoop.main.run()
