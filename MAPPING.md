@@ -1,12 +1,31 @@
 # Привязки кнопок и энкодеров
 
-Хост читает **стандартные MCU-ноты/CC**, которые шлёт P1-Nano в режиме Ableton Live.
-Все привязки заданы таблицами в начале `host.swift` (`NOTE_ACTIONS`, `ENC_TARGETS`) —
-правишь там, пересобираешь (`bash start.sh` или `install-autostart.sh`).
+Хост читает **стандартные MCU-ноты/CC**, которые шлёт P1-Nano. Привязки задаются файлом
+**`~/.config/p1nano/mapping.conf`** — БЕЗ пересборки. Поменял → перезапусти:
+```bash
+launchctl kickstart -k gui/$(id -u)/com.poscripty.p1nano-host
+```
+(Дефолты на случай отсутствия файла — в таблицах `NOTE_ACTIONS`/`ENC_TARGETS` в `host.swift`.)
 
-> Хост печатает в лог КАЖДОЕ нажатие с номером ноты (`кнопка нота 94 -> действие`) и
-> кручение энкодера (`энкодер CC16 +3`). Так легко узнать, что шлёт конкретная кнопка,
-> и поменять привязку под себя. Лог: `/tmp/p1nano-host.log` (автозапуск) или вывод `start.sh`.
+> Хост печатает в лог КАЖДОЕ нажатие с номером ноты (`кнопка нота 94`) и кручение энкодера
+> (`энкодер CC16 +3`). Так легко узнать, что шлёт конкретная кнопка (в т.ч. кнопки сенсорного
+> экрана), и привязать. Лог: `tail -f /tmp/p1nano-host.log`.
+
+## Формат `mapping.conf`
+```
+note <N> playpause | nexttrack | prevtrack | mute | micmute
+note <N> launch <ИмяПриложения>     # точное имя из /Applications
+note <N> run <shell-команда>        # URL, Shortcut, AppleScript — что угодно
+enc  <CC> brightness | volume | none
+unmap note <N>   |   unmap enc <CC>
+```
+
+## Сенсорный экран (4″) → запуск приложений
+Кнопки тачскрина в MCU-режиме шлют свои ноты. Чтобы повесить на них приложения:
+1. `tail -f /tmp/p1nano-host.log`
+2. Нажми кнопку на экране → увидишь `кнопка нота <N> (не назначена)`.
+3. Допиши в `mapping.conf`:  `note <N> launch Spotify`  (или `run open https://...`).
+4. Перезапусти хост (команда выше).
 
 ## Кнопки (note → действие) — по умолчанию
 
@@ -41,20 +60,22 @@
 - Внешнее изменение громкости → моторный фейдер сам едет (обратная связь).
 - LCD устройства показывает громкость числом + полоской.
 
-## Доступные действия (`enum Action`)
+## Доступные действия
 
-- `playPause`, `nextTrack`, `prevTrack`, `muteToggle`
-- `launch("ИмяПриложения")` — открыть приложение
-- `run("команда")` — **универсальный макрос**: любая shell-команда. Примеры:
+- `playpause`, `nexttrack`, `prevtrack` — медиа (через MediaRemote, без прав)
+- `mute` — системный звук вкл/выкл
+- `micmute` — мьют МИКРОФОНА (для созвонов)
+- `launch <Приложение>` — открыть приложение
+- `run <команда>` — **универсальный макрос**: любая shell-команда. Примеры:
   - `run("open https://youtube.com")` — открыть сайт
   - `run("shortcuts run 'Название ярлыка'")` — запустить macOS Shortcut
   - `run("osascript -e 'tell app \"Music\" to playpause'")` — AppleScript
-  - `run("open -a 'Mission Control'")`
+  - `run open -a 'Mission Control'`
 
-Энкодеры (`EncTarget`): `brightness`, `volume`, `none`.
+Энкодеры: `brightness`, `volume`, `none`.
 
-## Как поменять привязку
+## Как поменять привязку (без пересборки)
 
-1. Запусти хост, нажми нужную кнопку → в логе появится её нота.
-2. В `host.swift` в `NOTE_ACTIONS` добавь/поменяй строку: `<нота>: .launch("Spotify"),`
-3. `bash start.sh` (или `install-autostart.sh`) — пересоберёт и перезапустит.
+1. `tail -f /tmp/p1nano-host.log`, нажми нужную кнопку → увидишь её ноту.
+2. Открой `~/.config/p1nano/mapping.conf`, добавь/поменяй строку: `note <N> launch Spotify`
+3. Перезапусти: `launchctl kickstart -k gui/$(id -u)/com.poscripty.p1nano-host`

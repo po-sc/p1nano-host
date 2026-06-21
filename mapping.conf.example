@@ -1,0 +1,44 @@
+# ============================================================
+# Привязки кнопок и энкодеров iCON P1-Nano (читается хостом при старте).
+# Поменял -> перезапусти хост:  launchctl kickstart -k gui/$(id -u)/com.poscripty.p1nano-host
+# Строки с # — комментарии.
+#
+# Форматы:
+#   note <N> playpause | nexttrack | prevtrack | mute
+#   note <N> launch <ИмяПриложения>          (точное имя из /Applications)
+#   note <N> run <shell-команда>             (URL, Shortcut, AppleScript — что угодно)
+#   enc  <CC> brightness | volume | none
+#   unmap note <N>   /   unmap enc <CC>
+#
+# КАК УЗНАТЬ НОТУ КНОПКИ (в т.ч. кнопок сенсорного экрана):
+#   нажми кнопку -> в логе появится строка "кнопка нота <N> (не назначена)".
+#   Лог:  tail -f /tmp/p1nano-host.log
+#   Затем добавь сюда строку  note <N> launch <Приложение>  и перезапусти.
+# ============================================================
+
+# --- транспорт ---
+note 94 playpause
+note 93 playpause
+note 91 prevtrack
+note 92 nexttrack
+
+# --- Mute (физическая кнопка MUTE = нота 16) ---
+note 16 mute
+note 95 mute
+
+# --- ряд автоматизации read/write/trim/touch/latch/off -> приложения (поменяй под себя) ---
+note 74 launch Safari
+note 75 launch Music
+note 76 launch Finder
+note 77 launch Notes
+note 78 launch Calendar
+note 79 launch System Settings
+
+# --- примеры макросов (раскомментируй/поменяй ноту) ---
+# note 84 run open https://youtube.com
+# note 85 run shortcuts run "Моя команда"
+# note 86 run osascript -e 'tell app "Music" to playpause'
+
+# --- энкодеры (V-Pot, относительный CC) ---
+enc 16 brightness
+enc 23 volume

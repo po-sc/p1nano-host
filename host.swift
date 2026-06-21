@@ -39,12 +39,13 @@ func log(_ s: String) { FileHandle.standardOutput.write(("[host] " + s + "\n").d
 // Лог печатает КАЖДОЕ нажатие с нотой — легко сверить и поменять.
 // ============================================================================
 enum Action {
-    case playPause, nextTrack, prevTrack, muteToggle
+    case playPause, nextTrack, prevTrack, muteToggle, micMuteToggle
     case launch(String)            // открыть приложение по имени
     case run(String)               // выполнить shell-команду (макрос): URL, Shortcut, скрипт, AppleScript
 }
-// Кнопка (note on) -> действие:
-let NOTE_ACTIONS: [UInt8: Action] = [
+// Кнопка (note on) -> действие. Это ДЕФОЛТЫ; их можно переопределить файлом
+// ~/.config/p1nano/mapping.conf (без пересборки) — см. loadConfig() ниже и MAPPING.md.
+var NOTE_ACTIONS: [UInt8: Action] = [
     94: .playPause,                // Play
     93: .playPause,                // Stop (тоже пауза — удобно)
     91: .prevTrack,                // Rewind  -> предыдущий трек
@@ -62,10 +63,57 @@ let NOTE_ACTIONS: [UInt8: Action] = [
 ]
 // Энкодеры (V-Pot, относительный CC ch1). CC16=энкодер1 … CC23=энкодер8.
 enum EncTarget { case brightness, volume, none }
-let ENC_TARGETS: [UInt8: EncTarget] = [
+var ENC_TARGETS: [UInt8: EncTarget] = [
     16: .brightness,               // энкодер 1 -> яркость экрана
     23: .volume,                   // энкодер 8 -> громкость (бонус, дублирует фейдер)
 ]
+
+// Загрузка привязок из ~/.config/p1nano/mapping.conf (переопределяет дефолты, без пересборки).
+// Формат строк:  note <N> playpause|nexttrack|prevtrack|mute
+//                note <N> launch <ИмяПриложения>
+//                note <N> run <shell-команда>
+//                enc <CC> brightness|volume|none
+//                unmap note <N>  |  unmap enc <CC>
+func parseAction(_ verb: String, _ arg: String) -> Action? {
+    switch verb {
+    case "playpause": return .playPause
+    case "nexttrack": return .nextTrack
+    case "prevtrack": return .prevTrack
+    case "mute":      return .muteToggle
+    case "micmute":   return .micMuteToggle
+    case "launch":    return arg.isEmpty ? nil : .launch(arg)
+    case "run":       return arg.isEmpty ? nil : .run(arg)
+    default:          return nil
+    }
+}
+func loadConfig() {
+    let path = (NSHomeDirectory() as NSString).appendingPathComponent(".config/p1nano/mapping.conf")
+    guard let txt = try? String(contentsOfFile: path, encoding: .utf8) else {
+        log("конфиг привязок не найден (\(path)) — дефолты"); return
+    }
+    var count = 0
+    for raw in txt.split(separator: "\n") {
+        let line = raw.trimmingCharacters(in: .whitespaces)
+        if line.isEmpty || line.hasPrefix("#") { continue }
+        let p = line.split(separator: " ").map(String.init)
+        guard p.count >= 2 else { continue }
+        if p[0] == "note", p.count >= 3, let n = UInt8(p[1]) {
+            let arg = p.count > 3 ? p[3...].joined(separator: " ") : ""
+            if let a = parseAction(p[2], arg) { NOTE_ACTIONS[n] = a; count += 1 }
+        } else if p[0] == "enc", p.count >= 3, let c = UInt8(p[1]) {
+            switch p[2] {
+            case "brightness": ENC_TARGETS[c] = .brightness; count += 1
+            case "volume":     ENC_TARGETS[c] = .volume; count += 1
+            case "none":       ENC_TARGETS[c] = EncTarget.none; count += 1
+            default: break }
+        } else if p[0] == "unmap", p.count >= 3 {
+            if p[1] == "note", let n = UInt8(p[2]) { NOTE_ACTIONS[n] = nil; count += 1 }
+            if p[1] == "enc",  let c = UInt8(p[2]) { ENC_TARGETS[c] = nil; count += 1 }
+        }
+    }
+    log("конфиг привязок применён: \(count) строк из \(path)")
+}
+loadConfig()
 
 // ======================= ГРОМКОСТЬ + MUTE (CoreAudio) — только с главного потока ============
 func defaultOutDevice() -> AudioObjectID {
@@ -117,6 +165,21 @@ func getMute() -> Bool {
     var a = muteAddr(); var m: UInt32 = 0; var size = UInt32(MemoryLayout<UInt32>.size)
     if AudioObjectHasProperty(caDevice, &a) { AudioObjectGetPropertyData(caDevice, &a, 0, nil, &size, &m); return m != 0 }
     return getVol() == 0                          // фолбэк: устройство без Mute -> mute = громкость 0
+}
+func toggleMicMute() {                             // мьют МИКРОФОНА (для созвонов)
+    if DRYRUN { return }
+    var dev = AudioObjectID(0); var ds = UInt32(MemoryLayout<AudioObjectID>.size)
+    var da = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice,
+        mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+    AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &da, 0, nil, &ds, &dev)
+    var a = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyMute,
+        mScope: kAudioObjectPropertyScopeInput, mElement: kAudioObjectPropertyElementMain)
+    guard AudioObjectHasProperty(dev, &a) else { log("микрофон без Mute-свойства"); return }
+    var m: UInt32 = 0; var size = UInt32(MemoryLayout<UInt32>.size)
+    AudioObjectGetPropertyData(dev, &a, 0, nil, &size, &m)
+    var nm: UInt32 = m != 0 ? 0 : 1
+    AudioObjectSetPropertyData(dev, &a, 0, nil, size, &nm)
+    log("микрофон \(nm != 0 ? "MUTED" : "вкл")")
 }
 func toggleMute() {
     if DRYRUN { try? String(getMute() ? "0" : "1").write(toFile: DRYMUTE, atomically: true, encoding: .utf8); return }
@@ -377,6 +440,7 @@ func applyTick() {
         case .muteToggle:
             toggleMute(); let m = getMute(); showVolumeHUD(getVol(), muted: m); updateLCD(getVol(), m)
             log("Mute \(m ? "ON" : "OFF")")
+        case .micMuteToggle: toggleMicMute()
         case .launch(let app): launchApp(app); log("запуск приложения: \(app)")
         case .run(let cmd): runShell(cmd); log("макрос: \(cmd)")
         }
