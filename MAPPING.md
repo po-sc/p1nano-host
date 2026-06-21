@@ -35,6 +35,8 @@ unmap note <N>   |   unmap enc <CC>
 | 93 | Stop | Play/Pause |
 | 91 | Rewind | Предыдущий трек |
 | 92 | Fast-Fwd | Следующий трек |
+| 16 | **Mute** | Системный звук вкл/выкл |
+| 8 | **Solo** | Мьют **микрофона** (созвоны) |
 | 95 | Record | Mute вкл/выкл |
 | 74 | Read/Off | Открыть **Safari** |
 | 75 | Write | Открыть **Music** |

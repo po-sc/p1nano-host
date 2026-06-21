@@ -50,7 +50,8 @@ var NOTE_ACTIONS: [UInt8: Action] = [
     93: .playPause,                // Stop (тоже пауза — удобно)
     91: .prevTrack,                // Rewind  -> предыдущий трек
     92: .nextTrack,                // FFwd    -> следующий трек
-    16: .muteToggle,               // MUTE (физическая кнопка, MCU Mute ch1) -> Mute вкл/выкл
+    16: .muteToggle,               // MUTE (физическая кнопка, MCU Mute ch1) -> системный звук
+    8:  .micMuteToggle,            // SOLO (MCU Solo ch1) -> мьют МИКРОФОНА (созвоны)
     95: .muteToggle,               // Record  -> тоже Mute
     // Ряд автоматизации read/write/trim/touch/latch/off (MCU ноты 74..79) -> запуск приложений.
     // ПОМЕНЯЙ названия под свои приложения (точные имена из /Applications):

@@ -4,7 +4,7 @@
 # Строки с # — комментарии.
 #
 # Форматы:
-#   note <N> playpause | nexttrack | prevtrack | mute
+#   note <N> playpause | nexttrack | prevtrack | mute | micmute
 #   note <N> launch <ИмяПриложения>          (точное имя из /Applications)
 #   note <N> run <shell-команда>             (URL, Shortcut, AppleScript — что угодно)
 #   enc  <CC> brightness | volume | none
@@ -22,8 +22,9 @@ note 93 playpause
 note 91 prevtrack
 note 92 nexttrack
 
-# --- Mute (физическая кнопка MUTE = нота 16) ---
+# --- Mute: звук (кнопка MUTE=нота 16), микрофон (кнопка SOLO=нота 8) ---
 note 16 mute
+note 8 micmute
 note 95 mute
 
 # --- ряд автоматизации read/write/trim/touch/latch/off -> приложения (поменяй под себя) ---
@@ -34,10 +35,13 @@ note 77 launch Notes
 note 78 launch Calendar
 note 79 launch System Settings
 
-# --- примеры макросов (раскомментируй/поменяй ноту) ---
-# note 84 run open https://youtube.com
-# note 85 run shortcuts run "Моя команда"
-# note 86 run osascript -e 'tell app "Music" to playpause'
+# --- готовые макросы (раскомментируй нужное, поменяй ноту под свою кнопку) ---
+# note 84 run open https://youtube.com                    # открыть сайт
+# note 85 run caffeinate -t 3600                           # не давать маку спать 1ч
+# note 86 run pmset displaysleepnow                        # погасить экран / лок
+# note 87 run screencapture -i ~/Desktop/shot.png          # скриншот области
+# note 88 run shortcuts run "Focus"                        # запустить Shortcut (Не беспокоить)
+# note 89 run osascript -e 'tell app "Music" to playpause' # AppleScript
 
 # --- энкодеры (V-Pot, относительный CC) ---
 enc 16 brightness
