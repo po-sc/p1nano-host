@@ -282,13 +282,16 @@ func lcd(_ offset: UInt8, _ text: String) -> [UInt8] {
     return [0xF0,0x00,0x00,0x66,0x14,0x12,offset] + s + [0xF7]
 }
 var lastLcdVol = -1, lastLcdMute = false
-func updateLCD(_ v: Int, _ muted: Bool) {           // показать громкость на экране устройства
+func centered(_ s: String, _ width: Int = 28) -> String {   // текст по центру строки LCD
+    if s.count >= width { return String(s.prefix(width)) }
+    let pad = width - s.count, left = pad / 2
+    return String(repeating: " ", count: left) + s + String(repeating: " ", count: pad - left)
+}
+func updateLCD(_ v: Int, _ muted: Bool) {           // показать громкость на экране устройства (цифрами)
     if v == lastLcdVol && muted == lastLcdMute { return }
     lastLcdVol = v; lastLcdMute = muted
-    let filled = Int((Double(v)/100.0*20.0).rounded())
-    let bar = String(repeating: "=", count: filled) + String(repeating: " ", count: 20 - filled)
-    send(lcd(0x00, muted ? "Mac Volume   MUTED" : String(format: "Mac Volume   %3d%%", v)))
-    send(lcd(0x38, "[" + bar + "]"))
+    send(lcd(0x00, centered("Mac Volume")))
+    send(lcd(0x38, centered(muted ? "MUTED" : "\(v) %")))
 }
 func sendInitOnce() {
     for ch in 0..<8 { send([0xF0,0x00,0x00,0x66,0x14,0x20,UInt8(ch),0x00,0xF7]) }
