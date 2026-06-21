@@ -43,7 +43,14 @@
 
 ## Доступные действия (`enum Action`)
 
-`playPause`, `nextTrack`, `prevTrack`, `muteToggle`, `launch("ИмяПриложения")`.
+- `playPause`, `nextTrack`, `prevTrack`, `muteToggle`
+- `launch("ИмяПриложения")` — открыть приложение
+- `run("команда")` — **универсальный макрос**: любая shell-команда. Примеры:
+  - `run("open https://youtube.com")` — открыть сайт
+  - `run("shortcuts run 'Название ярлыка'")` — запустить macOS Shortcut
+  - `run("osascript -e 'tell app \"Music\" to playpause'")` — AppleScript
+  - `run("open -a 'Mission Control'")`
+
 Энкодеры (`EncTarget`): `brightness`, `volume`, `none`.
 
 ## Как поменять привязку

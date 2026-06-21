@@ -35,6 +35,7 @@ func log(_ s: String) { FileHandle.standardOutput.write(("[host] " + s + "\n").d
 enum Action {
     case playPause, nextTrack, prevTrack, muteToggle
     case launch(String)            // открыть приложение по имени
+    case run(String)               // выполнить shell-команду (макрос): URL, Shortcut, скрипт, AppleScript
 }
 // Кнопка (note on) -> действие:
 let NOTE_ACTIONS: [UInt8: Action] = [
@@ -155,6 +156,11 @@ func launchApp(_ name: String) {
     if DRYRUN { return }
     let p = Process(); p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
     p.arguments = ["-a", name]
+    try? p.run()
+}
+func runShell(_ cmd: String) {   // макрос: любая команда, напр. "open https://...", "shortcuts run Имя", "osascript -e ..."
+    if DRYRUN { return }
+    let p = Process(); p.executableURL = URL(fileURLWithPath: "/bin/sh"); p.arguments = ["-c", cmd]
     try? p.run()
 }
 
@@ -342,6 +348,7 @@ func applyTick() {
             toggleMute(); let m = getMute(); showVolumeHUD(getVol(), muted: m); updateLCD(getVol(), m)
             log("Mute \(m ? "ON" : "OFF")")
         case .launch(let app): launchApp(app); log("запуск приложения: \(app)")
+        case .run(let cmd): runShell(cmd); log("макрос: \(cmd)")
         }
     }
 }
